@@ -1,5 +1,5 @@
 # RFVM
-At this repository we present the model **Relevance Feature and Vector Machine (RFVM)** along with an explanatory example with a toy-problem to understand how to launch and use the algorithm.
+At this repository we present the model **Relevance Feature and Vector Machine (RFVM)** along with an explanatory example with a toy-problem to understand how to launch and use the algorithm. The explanatory notebook is located at RFVM_example.ipynb and the algorithm source code is located at RFVM_prune_elbo_dep.py.
 
 The main goal of this notebook is to teach ML users how to use the algorithm presented at (FILL WITH PAPER WHEN PUBLISHED).
 
