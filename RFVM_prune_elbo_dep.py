@@ -16,12 +16,6 @@ class LR_ARD(object):
         self.z = z  #(NxK)
         self.zv = z
         self.z_tst = z_tst  #(NxK_tst)
-        #############
-        # if len(t_tst.shape) > 1:
-        #     self.t_tst = np.array(t_tst).squeeze()  #(Nx1)
-        # else:
-        #     self.t_tst = t_tst  #(Nx1)
-        #########
         self.t_tst = t_tst
         self.t = t  #(NxD)
         self.Ac = 0
@@ -45,11 +39,7 @@ class LR_ARD(object):
         self.fact_sel = np.arange(self.z.shape[1])
         self.fact_sel_a = np.arange(self.zv.shape[0])
         
-        # Some precomputed matrices
-        #self.ZTZ = self.z.T @ self.z  #(KxK) es enorme, habría que ver si se puede evitar este calculo
-        #self.YTZ = self.y.T @ self.z  #(DxK) 
-        #self.KTY = self.K_tr.T @ self.t
-        #self.YTK = self.t.T @ self.K_tr
+
         self.L = []
         self.mse = []
         self.mse_tst = []        
@@ -112,10 +102,6 @@ class LR_ARD(object):
         self.hyper.alpha_a = self.hyper.alpha_a[self.fact_sel]
         self.hyper.alpha_b = self.hyper.alpha_b[self.fact_sel]
         self.index = self.index[self.fact_sel]
-#        q.alpha['a'] = q.alpha['a']
-#        q.alpha['b'] = q.alpha['b']
-#        self.hyper.alpha_a = self.hyper.alpha_a
-#        self.hyper.alpha_b = self.hyper.alpha_b
         q.K = len(self.fact_sel)
         self.K = len(self.fact_sel)
         self.num_feat.append(len(self.fact_sel))
@@ -176,30 +162,7 @@ class LR_ARD(object):
             self.hyper.psi_b = np.concatenate((self.hyper.psi_b,maximo*pruning_crit_a*0.1*np.ones(N_prune,)))
             self.Nv = np.shape(self.zv)[0]
 
-
-
-
-
-
-
-        
-#    def compute_mse(self, z = None, y = None):
-#        q = self.q_dist
-#        if z is None:
-#            z = self.z
-#        if y is None:
-#            y = self.y
-#        diff = (y - z @ np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T - np.full((np.shape(y)[0], 1),q.b['mean'])).ravel()
-#        return  diff@diff/self.N
-#    
-#    def compute_R2(self, z = None, y = None):
-#        q = self.q_dist
-#        if z is None:
-#            z = self.z
-#        if y is None:
-#            y = self.y
-#        return  r2_score(y.ravel(), (z @ np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T).ravel())
-#        
+       
     def predict(self, Z_test):
         q = self.q_dist
         
@@ -210,16 +173,8 @@ class LR_ARD(object):
         sig = q.tau_mean() + q.b['cov'] + q.V['mean'].T * Z_test @ self.zv.T @ q.A['cov'] @ self.zv @ (Z_test.T * q.V['mean']) + q.V['cov'].T * Z_test @ self.zv.T @ q.A['prodT'] @ self.zv @ Z_test.T
         sig = np.diagonal(sig)
         sig = sig[:, np.newaxis]
-        #####################
-        #sig = q.tau_mean() + 2*np.diagflat(q.xi['mean'])
-        #med = (self.t_tst - (1/2)+q.tau_mean()*Z_test @ np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T + q.tau_mean()*q.b['mean'])@sig
-        ################
         sig_2 = sig**2
-        #results = self.sigmoid(med/np.sqrt(1 + (np.pi/8)*sig_2))
-        #sig = abs(sig)
-        #sig = np.where(sig > 0.0, sig, 0.0)
         results = self.sigmoid(med/np.sqrt(1 + (np.pi/8)*sig_2))
-        #results = np.nan_to_num(results)
         return results
             
     def predict_binary(self, Z_test):
@@ -232,13 +187,8 @@ class LR_ARD(object):
         sig = q.tau_mean() + q.b['cov'] + q.V['mean'].T * Z_test @ self.zv.T @ q.A['cov'] @ self.zv @ (Z_test.T * q.V['mean']) + q.V['cov'].T * Z_test @ self.zv.T @ q.A['prodT'] @ self.zv @ Z_test.T
         sig = np.diagonal(sig)
         sig = sig[:, np.newaxis]
-        ################
-#        sig = q.tau_mean() + 2*np.diagflat(q.xi['mean'])
-#        med = (self.t - (1/2)+q.tau_mean()*Z_test @ np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T + q.tau_mean()*q.b['mean'])*sig
-        ################
         results = self.sigmoid(med/np.sqrt(1 + (np.pi/8)*sig))
         labs = []
-        #print(results)
         for i in range(np.shape(self.labels_pred[-1])[0]):
             if not np.isnan(results[i]):
                 if results[i] < 0.5:
@@ -292,16 +242,11 @@ class LR_ARD(object):
         q = self.q_dist
         for j in range(maxit):
             self.update()
-#            self.mse.append(self.compute_mse())
-            #self.R2.append(self.compute_R2())
-#            self.mse_tst.append(self.compute_mse(self.z_tst, self.y_tst))
-            #self.R2_tst.append(self.compute_R2(self.z_tst, self.y_tst))
             self.K_vec.append(q.K)
             #####################
             self.labels_pred.append(self.predict(self.z_tst))
             self.train_pred.append(self.predict(self.z))
             ###############
-            #Hacemos aqui el apaño de las labels predecidas
             labs = []
             ###############
             for i in range(np.shape(self.labels_pred[-1])[0]):
@@ -327,27 +272,7 @@ class LR_ARD(object):
             #print('Acc: ',accuracy_score(labs.flatten(), self.t_tst.flatten()))
             print('Acc train: ', accuracy_score(labs_tr[:,np.newaxis], self.t))
             print('Acc test: ', self.accu[-1])
-            ############
-            #####################
-#            if self.predict(self.z_tst) > 0.50:
-#                self.labels_pred.append(1)
-#            else:
-#                self.labels_pred.append(0)
-            #####################
-            #print(np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T)
-            #print(q.V['mean'])
             
-            ##############
-#            print(self.y[10,0])
-#            lel = self.predict(self.z)
-#            print(lel[10,0])
-            ###############
-            #print('Max: ', np.max(abs(q.A['mean'])))
-            #print('Mix: ', np.min(abs(q.A['mean'])))
-#            print(np.sort(q.V['mean']))
-#            print('Max V: ', np.max(q.V['mean']))
-#            print('Min V: ', np.min(q.V['mean']))
-#            print('B: ', q.b['mean'])
             self.depruning(pruning_crit)
             self.depruning_a(pruning_crit_a)
             self.L.append(self.update_bound()[0][0])
@@ -355,8 +280,6 @@ class LR_ARD(object):
                 self.pruning(pruning_crit)
             if prune_a == 1 and j>5:
                 self.pruning_a(pruning_crit_a)
-            ##################
-            ##################
             if q.K == 0:
                 print('\nThere are no representative latent factors, no structure found in the data.')
                 self.L.append(self.L[-3])
@@ -368,10 +291,8 @@ class LR_ARD(object):
             if (len(self.L) > 300) and (abs(1 - np.mean(self.L[-200:-1])/self.L[-1]) < tol) or np.isnan(self.L[-1]):
                 print('\nModel correctly trained. Convergence achieved')
                 #print(np.diagflat(q.V['mean']) @ self.z.T @ q.A['mean'].T)
-                return 
-            #print('LB: ',self.L[-1])               
+                return              
         print('')
-        #print(self.labels_pred[-1])
         labs = []
         ###############
         for i in range(np.shape(self.labels_pred[-1])[0]):
@@ -383,21 +304,6 @@ class LR_ARD(object):
         #print(labs.T)
 
     def update(self):
-#        p1 = mp.Process(target=self.update_a())
-#        p2 = mp.Process(target=self.update_v())
-#        p3 = mp.Process(target=self.update_alpha())
-#        p4 = mp.Process(target=self.update_psi())
-#        p5 = mp.Process(target=self.update_tau())
-#        p1.start()
-#        p2.start()
-#        p3.start()
-#        p4.start()
-#        p5.start()
-#        p1.join()
-#        p2.join()
-#        p3.join()
-#        p4.join()
-#        p5.join()
         self.update_a()
         self.update_psi()
         self.update_v()
@@ -459,46 +365,19 @@ class LR_ARD(object):
         v_var = np.reshape(v_var, (self.K,1))
         if not np.any(np.isnan(v_var)): 
             q.V['cov'] = 1/v_var
-            #OPT#
-            # mean
+    
             term_loop = -np.sum(((q.tau_mean()) * q.V['mean'] * self.zv.T @ q.A['prodT'] @ self.zv).T * (self.z.T @ self.z),1) + np.sum((q.tau_mean() * q.V['mean'] * self.zv.T @ q.A['prodT'])*self.zv.T,1) * np.sum((self.z**2).T,1)
             total = ((q.tau_mean() * (q.Y['mean'].T - q.b['mean']) @ self.z) * self.zv).T @ q.A['mean'].T + term_loop[:,np.newaxis]
-            #lel = ((q.tau_mean() * (q.Y['mean'].T - q.b['mean']) @ self.z) * self.z).T @ q.A['mean'].T
-            #print('unico: ',lel[1])
-            #print('Muchos: ', term_loop[1])
             v_mean = q.V['cov'] * total
-            #print('Mean: ', v_mean[1])
             q.V['mean'] = v_mean
             
-            #print('True:',q.V['mean'][0])
             v_m, v_s = self.update_abs(q.V['mean'],q.V['cov'])
             q.V['mean'] = v_m
             q.V['cov'] = v_s
-            #print('Folded: ',q.V['mean'][1])
            
         else:
             print ('Cov V is not invertible, not updated')
         
-    
-#    def update_v(self):
-#        q = self.q_dist
-#
-#        v_var = q.tau_mean() * np.diag(np.dot(np.dot(self.z.T, q.A['prodT']),self.z)) * np.diag(self.z.T @ self.z) + q.alpha_mean()
-#        v_var = np.reshape(v_var, (self.K,1))
-#        if not np.any(np.isnan(v_var)): 
-#            q.V['cov'] = 1/v_var
-#            #OPT#
-#            # mean
-#            v_mean = np.zeros((np.shape(self.z)[1],1))
-#            for d in range(np.shape(self.z)[1]):
-#                v_mean[d,0] = q.V['cov'][d,0] * (q.tau_mean() * (q.Y['mean'].T - np.full((1, self.N), q.b['mean'])) @ self.z[:,d,np.newaxis] @ self.z[:,d,np.newaxis].T @ q.A['mean'].T - np.sum((q.tau_mean()) * q.V['mean'] * self.z.T @ q.A['prodT'] @ self.z[:,d,np.newaxis] * self.z.T @ self.z[:,d,np.newaxis]) + q.tau_mean() * q.V['mean'][d,0] * self.z[:,d,np.newaxis].T @ q.A['prodT'] @ self.z[:,d,np.newaxis] * self.z[:,d,np.newaxis].T @ self.z[:,d,np.newaxis])  
-#            q.V['mean'] = v_mean
-#            v_m, v_s = self.update_abs(q.V['mean'],q.V['cov'])
-#            q.V['mean'] = v_m
-#            q.V['cov'] = v_s
-#           
-#        else:
-#            print ('Cov V is not invertible, not updated')
 
      
     def update_b(self):
@@ -510,25 +389,12 @@ class LR_ARD(object):
         
     def update_psi(self):
         q = self.q_dist
-#        q.psi['a'] = (self.hyper.psi_a + 0.5*self.N)/(self.N)
-#        q.psi['b'] = (self.hyper.psi_b + 0.5 * np.diag(q.A['prodT']))/(self.N)
         q.psi['a'] = (self.hyper.psi_a + 0.5)
         q.psi['b'] = (self.hyper.psi_b + 0.5 * np.diag(q.A['prodT']))
     def update_alpha(self):
         q = self.q_dist
-#        q.alpha['a'] = (self.hyper.alpha_a + 0.5*self.D)/(self.D)
-#        q.alpha['b'] = (self.hyper.alpha_b + 0.5 * np.diag(q.V['prodT']))/(self.D)
         q.alpha['a'] = (self.hyper.alpha_a + 0.5)
-        q.alpha['b'] = (self.hyper.alpha_b[0] + 0.5 * (q.V['mean']**2 + q.V['cov'])).flatten()
-        
-#    def update_tau(self):
-#        q = self.q_dist 
-#        q.tau['a'] = (self.hyper.tau_a + 0.5 * self.N)
-#        b_loop = 0
-#        for n in range(np.shape(self.K_tr)[0]):
-#            b_loop += np.trace(q.V['mean'] @ q.V['mean'].T * self.z[n,:] @ self.z.T @ q.A['prodT'] @ self.z * self.z[n,:] + q.V['cov'] * self.z[n,:] @ self.z.T @ q.A['prodT'] @ self.z * self.z[n,:])
-#        q.tau['b'] = self.hyper.tau_b + 0.5 *(np.trace(q.Y['prodT']) - (2 * (q.Y['mean'].T - np.full((1, self.N), q.b['mean'])) @ self.z * q.V['mean'].T @ self.z.T @ q.A['mean'].T) + b_loop + self.N * q.b['prodT'] -2 * q.Y['mean'].T @ np.full((1, self.N),q.b['mean']).T)
-#        
+        q.alpha['b'] = (self.hyper.alpha_b[0] + 0.5 * (q.V['mean']**2 + q.V['cov'])).flatten()      
     
     def update_tau(self):
         q = self.q_dist
@@ -539,8 +405,6 @@ class LR_ARD(object):
     
     def update_y(self):
         q = self.q_dist
-        #q.Y['cov'] = self.myInverse(q.tau_mean()*np.identity(self.N) + 2*np.diagflat(q.xi['mean']))
-#        q.Y['mean'] = (self.t.T - np.full((1, self.N),1/2) + q.tau_mean() * q.A['mean'] @ self.z @ np.diagflat(q.V['mean']) @ self.z.T + q.tau_mean() * q.b['mean'] * np.full((1, self.N), 1)) @ q.Y['cov']
         y_cov = self.myInverse(q.tau_mean()*np.identity(self.N) + 2*np.diagflat(self.gamma(q.xi['mean'])))
         if not np.any(np.isnan(y_cov)): 
             q.Y['cov'] = y_cov
@@ -632,24 +496,12 @@ class LR_ARD(object):
         q.alpha['Elogp'] = -(0.5 + np.mean(self.hyper.alpha_a) - 2)* np.sum(np.log(q.alpha['b']))
         q.psi['Elogp'] = -(0.5 + np.mean(self.hyper.psi_a) - 2)* np.sum(np.log(q.psi['b']))
         
-        ################### AHI QUE METER ESTE TÉRMINO
-#        term = np.trace(np.log(self.sigmoid(np.diagflat(q.xi['mean'])))) + q.Y['mean'].T @ self.t -(1/2)*(np.trace(np.diagflat(q.Y['mean'])) + np.trace(np.diagflat(q.xi['mean']))) - self.gamma(q.xi['mean'].T) @ (np.diag(q.Y['prodT']) - q.xi['mean']**2)
         term = 0
         for n in range(np.shape(self.z)[0]):
             term += np.log(self.sigmoid(q.xi['mean'][n])) + q.Y['mean'][n]*self.t[n] -(1/2)*(q.Y['mean'][n] + q.xi['mean'][n]) - self.gamma(q.xi['mean'][n])*(q.Y['prodT'][n,n] - q.xi['mean'][n]**2)
-        ############################
         
         ElogP = q.tau['ElogpWalp'] + q.alpha['Elogp'] + q.psi['Elogp']
         return ElogP - q.A['LH'] - q.V['LH'] - (1/2)*q.b['prodT'] - (1/2)*q.b['cov']
-    
-#    def update_truncated(self, mu, sig):
-#        alfa_fi = (1/(np.sqrt(2*np.pi)))*np.exp((mu**2)/(2*(sig)))
-#        alfa_FI = (1/2)*(1 + math.erf(-((mu)/np.sqrt(sig*2))))
-#        
-#        sigma = sig*(1 + (-((mu/np.sqrt(sig))*alfa_fi)/(1-alfa_FI)) - (alfa_fi/(1-alfa_FI))**2)
-#        mean = mu + (alfa_fi/(1-alfa_FI))*sig
-#        
-#        return mean, sigma
                
     def update_abs(self, mea, sig):
         mean = np.sqrt((sig*2)/(np.pi))*np.exp(-(mea**2)/(2*(sig))) + mea*(1 - 2*sc.stats.norm.cdf(-(mea/np.sqrt(sig))))
@@ -659,16 +511,10 @@ class LR_ARD(object):
 
 class HyperParameters(object):
     def __init__(self, K, N):
-#        self.alpha_a = 1e-10 * np.ones((K,))
-#        self.alpha_b = 1e-14 * np.ones((K,))
         self.alpha_a = 1e-12 * np.ones((K,))
         self.alpha_b = 1e-14 * np.ones((K,))
         self.tau_a = 1e-14
         self.tau_b = 1e-14
-        # self.tau_a = 10
-        # self.tau_b = 1
-#        self.psi_a = 1e-10 * np.ones((N,))
-#        self.psi_b = 1e-14 * np.ones((N,))
         self.psi_a = 1e-12 * np.ones((N,))
         self.psi_b = 1e-14 * np.ones((N,))
 
@@ -724,47 +570,27 @@ class Qdistribution(object):
             }
         
             
-#        self.W["mean"] = np.random.normal(0.0, 1.0, self.D * self.K).reshape(self.D, self.K)
-#        self.W["cov"] = np.eye(self.K)
-#        self.W["prodT"] = np.dot(self.W["mean"].T, self.W["mean"])+self.K*self.W["cov"]
         
-        #self.A["mean"] = np.random.normal(0.0, 1.0, self.D * self.K).reshape(self.D, self.K)
-        #np.random.seed(1)
         self.A["mean"] = np.random.normal(0.0, 1.0, self.n).reshape(self.n,1)
-        #self.A["cov"] = np.eye(self.K)
         self.A["cov"] = np.eye(self.n)
-        #self.A["prodT"] = np.dot(self.A["mean"].T, self.A["mean"])+self.K*self.A["cov"]
         self.A["prodT"] = np.dot(self.A["mean"].T, self.A["mean"])+self.n*self.A["cov"]
         
-        #np.random.seed(2)
         self.V["mean"] = np.random.normal(0.0, 1.0, self.K).reshape(self.K,1)
         
         self.V["cov"] = np.ones((self.K,1))
-        
-        #self.V["prodT"] = np.dot(self.V["mean"].T, self.V["mean"])+self.K*self.V["cov"]
         ###########
-        #np.random.seed(3)
         self.b["mean"] = np.random.normal(0.0, 1.0)
 
         self.b["cov"] = 1
     
         self.b["prodT"] = self.b["mean"]**2 + self.b["cov"]
         #############
-        
-        #############HACEMOS PIRULA CUTRE
-#        self.Y['mean'] = np.random.normal(0.0, 1.0, self.n).reshape(self.n,1)
-#        
-#        self.Y['cov'] = np.eye(self.n)
-#        
-#        self.Y['prodT'] = np.dot(self.Y["mean"].T, self.Y["mean"])+self.Y["cov"]
-        ################
         self.Y['mean'] = self.z @ np.diagflat(self.V["mean"]) @ self.z.T @ self.A["mean"] + np.full((np.shape(self.z)[0], 1), self.b["mean"])
         
         self.Y['cov'] = self.tau_mean() * np.identity(np.shape(self.z)[0])
         
         self.Y['prodT'] = np.dot(self.Y["mean"].T, self.Y["mean"])+self.Y["cov"]
         ###############
-        #np.random.seed(4)
         self.xi['mean'] = np.random.normal(0.0, 1.0, self.n).reshape(self.n,1)
 
     def qGamma(self,a,b,K):
